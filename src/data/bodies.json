@@ -1,0 +1,603 @@
+{
+	"bodies": [
+		{
+			"id": "sun",
+			"name": "Sun",
+			"kind": "star",
+			"parent": null,
+			"meanRadiusKm": 695700,
+			"rotationPeriodHours": 609.12,
+			"axialTiltDeg": 7.25,
+			"material": {
+				"emissive": true
+			},
+			"textures": {
+				"surface": [
+					{
+						"file": "assets/surface/sunmap.jpg",
+						"width": 1024,
+						"height": 512,
+						"greyscale": false,
+						"projection": "equirectangular",
+						"cube": "assets/cube/sun/surface_1024"
+					}
+				]
+			}
+		},
+		{
+			"id": "mercury",
+			"name": "Mercury",
+			"kind": "planet",
+			"parent": "sun",
+			"meanRadiusKm": 2439.7,
+			"rotationPeriodHours": 1407.6,
+			"axialTiltDeg": 0.034,
+			"orbit": {
+				"semiMajorAxisKm": 57909000.0,
+				"eccentricity": 0.2056,
+				"inclinationDeg": 7.005,
+				"periodDays": 87.969
+			},
+			"textures": {
+				"surface": [
+					{
+						"file": "assets/surface/mercurymap.jpg",
+						"width": 1024,
+						"height": 512,
+						"greyscale": false,
+						"projection": "equirectangular",
+						"cube": "assets/cube/mercury/surface_1024"
+					}
+				],
+				"bump": [
+					{
+						"file": "assets/surface/mercurybump.jpg",
+						"width": 1024,
+						"height": 512,
+						"greyscale": true,
+						"projection": "equirectangular",
+						"cube": "assets/cube/mercury/bump_1024"
+					}
+				]
+			}
+		},
+		{
+			"id": "venus",
+			"name": "Venus",
+			"kind": "planet",
+			"parent": "sun",
+			"meanRadiusKm": 6051.8,
+			"rotationPeriodHours": -5832.5,
+			"axialTiltDeg": 177.36,
+			"orbit": {
+				"semiMajorAxisKm": 108210000.0,
+				"eccentricity": 0.0068,
+				"inclinationDeg": 3.395,
+				"periodDays": 224.701
+			},
+			"textures": {
+				"surface": [
+					{
+						"file": "assets/surface/venusmap.jpg",
+						"width": 1024,
+						"height": 512,
+						"greyscale": false,
+						"projection": "equirectangular",
+						"cube": "assets/cube/venus/surface_1024"
+					}
+				],
+				"bump": [
+					{
+						"file": "assets/surface/venusbump.jpg",
+						"width": 1024,
+						"height": 512,
+						"greyscale": true,
+						"projection": "equirectangular",
+						"cube": "assets/cube/venus/bump_1024"
+					}
+				]
+			}
+		},
+		{
+			"id": "earth",
+			"name": "Earth",
+			"kind": "planet",
+			"parent": "sun",
+			"meanRadiusKm": 6371.0,
+			"rotationPeriodHours": 23.9345,
+			"axialTiltDeg": 23.44,
+			"orbit": {
+				"semiMajorAxisKm": 149598000.0,
+				"eccentricity": 0.0167,
+				"inclinationDeg": 0.0,
+				"periodDays": 365.256
+			},
+			"textures": {
+				"surface": [
+					{
+						"file": "assets/surface/earthmap1k.jpg",
+						"width": 1000,
+						"height": 500,
+						"greyscale": false,
+						"projection": "equirectangular",
+						"cube": "assets/cube/earth/surface_1000"
+					}
+				],
+				"bump": [
+					{
+						"file": "assets/surface/earthbump1k.jpg",
+						"width": 1000,
+						"height": 500,
+						"greyscale": true,
+						"projection": "equirectangular",
+						"cube": "assets/cube/earth/bump_1000"
+					}
+				],
+				"specular": [
+					{
+						"file": "assets/surface/earthspec1k.jpg",
+						"width": 1000,
+						"height": 500,
+						"greyscale": true,
+						"projection": "equirectangular",
+						"cube": "assets/cube/earth/specular_1000"
+					}
+				],
+				"night": [
+					{
+						"file": "assets/surface/earthlights1k.jpg",
+						"width": 1024,
+						"height": 512,
+						"greyscale": false,
+						"projection": "equirectangular",
+						"cube": "assets/cube/earth/night_1024"
+					}
+				],
+				"clouds": [
+					{
+						"file": "assets/surface/earthcloudmap.jpg",
+						"width": 1024,
+						"height": 512,
+						"greyscale": false,
+						"projection": "equirectangular",
+						"cube": "assets/cube/earth/clouds_1024"
+					}
+				],
+				"cloudsAlpha": [
+					{
+						"file": "assets/surface/earthcloudmaptrans.jpg",
+						"width": 1024,
+						"height": 512,
+						"greyscale": true,
+						"projection": "equirectangular",
+						"cube": "assets/cube/earth/cloudsAlpha_1024"
+					}
+				]
+			}
+		},
+		{
+			"id": "moon",
+			"name": "Moon",
+			"kind": "moon",
+			"parent": "earth",
+			"meanRadiusKm": 1737.4,
+			"rotationPeriodHours": 655.728,
+			"axialTiltDeg": 6.68,
+			"orbit": {
+				"semiMajorAxisKm": 384400,
+				"eccentricity": 0.0549,
+				"inclinationDeg": 5.145,
+				"periodDays": 27.3217
+			},
+			"textures": {
+				"surface": [
+					{
+						"file": "assets/surface/moonmap4k.jpg",
+						"width": 4000,
+						"height": 2000,
+						"greyscale": true,
+						"projection": "equirectangular",
+						"cube": "assets/cube/moon/surface_4000"
+					},
+					{
+						"file": "assets/surface/moonmap2k.jpg",
+						"width": 2000,
+						"height": 1000,
+						"greyscale": true,
+						"projection": "equirectangular",
+						"cube": "assets/cube/moon/surface_2000"
+					},
+					{
+						"file": "assets/surface/moonmap1k.jpg",
+						"width": 1000,
+						"height": 500,
+						"greyscale": true,
+						"projection": "equirectangular",
+						"cube": "assets/cube/moon/surface_1000"
+					}
+				],
+				"bump": [
+					{
+						"file": "assets/surface/moonbump4k.jpg",
+						"width": 4000,
+						"height": 2000,
+						"greyscale": true,
+						"projection": "equirectangular",
+						"cube": "assets/cube/moon/bump_4000"
+					},
+					{
+						"file": "assets/surface/moonbump2k.jpg",
+						"width": 2000,
+						"height": 1000,
+						"greyscale": true,
+						"projection": "equirectangular",
+						"cube": "assets/cube/moon/bump_2000"
+					},
+					{
+						"file": "assets/surface/moonbump1k.jpg",
+						"width": 1000,
+						"height": 500,
+						"greyscale": true,
+						"projection": "equirectangular",
+						"cube": "assets/cube/moon/bump_1000"
+					}
+				]
+			}
+		},
+		{
+			"id": "mars",
+			"name": "Mars",
+			"kind": "planet",
+			"parent": "sun",
+			"meanRadiusKm": 3389.5,
+			"rotationPeriodHours": 24.6229,
+			"axialTiltDeg": 25.19,
+			"orbit": {
+				"semiMajorAxisKm": 227956000.0,
+				"eccentricity": 0.0935,
+				"inclinationDeg": 1.848,
+				"periodDays": 686.98
+			},
+			"textures": {
+				"surface": [
+					{
+						"file": "assets/surface/mars_1k_color.jpg",
+						"width": 1024,
+						"height": 512,
+						"greyscale": false,
+						"projection": "equirectangular",
+						"cube": "assets/cube/mars/surface_1024"
+					},
+					{
+						"file": "assets/surface/marsmap1k.jpg",
+						"width": 1000,
+						"height": 500,
+						"greyscale": false,
+						"projection": "equirectangular",
+						"cube": "assets/cube/mars/surface_1000"
+					}
+				],
+				"bump": [
+					{
+						"file": "assets/surface/mars_1k_topo.jpg",
+						"width": 1024,
+						"height": 512,
+						"greyscale": true,
+						"projection": "equirectangular",
+						"cube": "assets/cube/mars/bump_1024"
+					},
+					{
+						"file": "assets/surface/marsbump1k.jpg",
+						"width": 1000,
+						"height": 500,
+						"greyscale": true,
+						"projection": "equirectangular",
+						"cube": "assets/cube/mars/bump_1000"
+					}
+				],
+				"normal": [
+					{
+						"file": "assets/surface/mars_1k_normal.jpg",
+						"width": 1024,
+						"height": 512,
+						"greyscale": false,
+						"projection": "equirectangular",
+						"cube": "assets/cube/mars/normal_1024"
+					}
+				]
+			}
+		},
+		{
+			"id": "phobos",
+			"name": "Phobos",
+			"kind": "moon",
+			"parent": "mars",
+			"meanRadiusKm": 11.08,
+			"rotationPeriodHours": 7.65384,
+			"axialTiltDeg": 0.0,
+			"orbit": {
+				"semiMajorAxisKm": 9376,
+				"eccentricity": 0.0151,
+				"inclinationDeg": 1.075,
+				"periodDays": 0.31891
+			},
+			"material": {
+				"albedo": 0.071,
+				"baseColor": "#5b5349"
+			},
+			"textures": {
+				"bump": [
+					{
+						"file": "assets/surface/phobosbump.jpg",
+						"width": 200,
+						"height": 100,
+						"greyscale": true,
+						"projection": "equirectangular",
+						"cube": "assets/cube/phobos/bump_200"
+					}
+				]
+			}
+		},
+		{
+			"id": "deimos",
+			"name": "Deimos",
+			"kind": "moon",
+			"parent": "mars",
+			"meanRadiusKm": 6.2,
+			"rotationPeriodHours": 30.29856,
+			"axialTiltDeg": 0.0,
+			"orbit": {
+				"semiMajorAxisKm": 23463,
+				"eccentricity": 0.00033,
+				"inclinationDeg": 1.788,
+				"periodDays": 1.26244
+			},
+			"material": {
+				"albedo": 0.068,
+				"baseColor": "#5d554b"
+			},
+			"textures": {
+				"bump": [
+					{
+						"file": "assets/surface/deimosbump.jpg",
+						"width": 200,
+						"height": 100,
+						"greyscale": true,
+						"projection": "equirectangular",
+						"cube": "assets/cube/deimos/bump_200"
+					}
+				]
+			}
+		},
+		{
+			"id": "jupiter",
+			"name": "Jupiter",
+			"kind": "planet",
+			"parent": "sun",
+			"meanRadiusKm": 69911,
+			"rotationPeriodHours": 9.925,
+			"axialTiltDeg": 3.13,
+			"orbit": {
+				"semiMajorAxisKm": 778479000.0,
+				"eccentricity": 0.0487,
+				"inclinationDeg": 1.304,
+				"periodDays": 4332.589
+			},
+			"textures": {
+				"surface": [
+					{
+						"file": "assets/surface/jupiter2_4k.jpg",
+						"width": 4000,
+						"height": 2000,
+						"greyscale": false,
+						"projection": "equirectangular",
+						"cube": "assets/cube/jupiter/surface_4000"
+					},
+					{
+						"file": "assets/surface/jupiter2_2k.jpg",
+						"width": 2000,
+						"height": 1000,
+						"greyscale": false,
+						"projection": "equirectangular",
+						"cube": "assets/cube/jupiter/surface_2000"
+					},
+					{
+						"file": "assets/surface/jupitermap.jpg",
+						"width": 1024,
+						"height": 512,
+						"greyscale": false,
+						"projection": "equirectangular",
+						"cube": "assets/cube/jupiter/surface_1024"
+					},
+					{
+						"file": "assets/surface/jupiter2_1k.jpg",
+						"width": 1000,
+						"height": 500,
+						"greyscale": false,
+						"projection": "equirectangular",
+						"cube": "assets/cube/jupiter/surface_1000"
+					}
+				]
+			}
+		},
+		{
+			"id": "saturn",
+			"name": "Saturn",
+			"kind": "planet",
+			"parent": "sun",
+			"meanRadiusKm": 58232,
+			"rotationPeriodHours": 10.656,
+			"axialTiltDeg": 26.73,
+			"orbit": {
+				"semiMajorAxisKm": 1432041000.0,
+				"eccentricity": 0.052,
+				"inclinationDeg": 2.486,
+				"periodDays": 10755.7
+			},
+			"ring": {
+				"innerRadiusKm": 74500,
+				"outerRadiusKm": 136775
+			},
+			"textures": {
+				"surface": [
+					{
+						"file": "assets/surface/saturnmap.jpg",
+						"width": 1800,
+						"height": 900,
+						"greyscale": false,
+						"projection": "equirectangular",
+						"cube": "assets/cube/saturn/surface_1800"
+					}
+				],
+				"ringColor": [
+					{
+						"file": "assets/surface/saturnringcolor.jpg",
+						"width": 915,
+						"height": 64,
+						"greyscale": false,
+						"projection": "ringStrip"
+					}
+				],
+				"ringAlpha": [
+					{
+						"file": "assets/derived/saturnringtrans.png",
+						"width": 915,
+						"height": 64,
+						"greyscale": true,
+						"projection": "ringStrip",
+						"derived": true
+					}
+				]
+			}
+		},
+		{
+			"id": "uranus",
+			"name": "Uranus",
+			"kind": "planet",
+			"parent": "sun",
+			"meanRadiusKm": 25362,
+			"rotationPeriodHours": -17.24,
+			"axialTiltDeg": 97.77,
+			"orbit": {
+				"semiMajorAxisKm": 2867043000.0,
+				"eccentricity": 0.0469,
+				"inclinationDeg": 0.773,
+				"periodDays": 30687.15
+			},
+			"ring": {
+				"innerRadiusKm": 37850,
+				"outerRadiusKm": 51150
+			},
+			"textures": {
+				"surface": [
+					{
+						"file": "assets/surface/uranusmap.jpg",
+						"width": 1024,
+						"height": 512,
+						"greyscale": false,
+						"projection": "equirectangular",
+						"cube": "assets/cube/uranus/surface_1024"
+					}
+				],
+				"ringColor": [
+					{
+						"file": "assets/surface/uranusringcolour.jpg",
+						"width": 200,
+						"height": 14,
+						"greyscale": false,
+						"projection": "ringStrip"
+					}
+				],
+				"ringAlpha": [
+					{
+						"file": "assets/surface/uranusringtrans.jpg",
+						"width": 200,
+						"height": 14,
+						"greyscale": false,
+						"projection": "ringStrip"
+					}
+				]
+			}
+		},
+		{
+			"id": "neptune",
+			"name": "Neptune",
+			"kind": "planet",
+			"parent": "sun",
+			"meanRadiusKm": 24622,
+			"rotationPeriodHours": 16.11,
+			"axialTiltDeg": 28.32,
+			"orbit": {
+				"semiMajorAxisKm": 4514953000.0,
+				"eccentricity": 0.0097,
+				"inclinationDeg": 1.77,
+				"periodDays": 60190.03
+			},
+			"textures": {
+				"surface": [
+					{
+						"file": "assets/surface/neptunemap.jpg",
+						"width": 1024,
+						"height": 512,
+						"greyscale": false,
+						"projection": "equirectangular",
+						"cube": "assets/cube/neptune/surface_1024"
+					}
+				]
+			}
+		},
+		{
+			"id": "pluto",
+			"name": "Pluto",
+			"kind": "dwarfPlanet",
+			"parent": "sun",
+			"meanRadiusKm": 1188.3,
+			"rotationPeriodHours": -153.2928,
+			"axialTiltDeg": 122.53,
+			"orbit": {
+				"semiMajorAxisKm": 5906380000.0,
+				"eccentricity": 0.2444,
+				"inclinationDeg": 17.16,
+				"periodDays": 90560.0
+			},
+			"textures": {
+				"surface": [
+					{
+						"file": "assets/surface/plutomap2k.jpg",
+						"width": 2000,
+						"height": 1000,
+						"greyscale": false,
+						"projection": "equirectangular",
+						"cube": "assets/cube/pluto/surface_2000"
+					},
+					{
+						"file": "assets/surface/plutomap1k.jpg",
+						"width": 1000,
+						"height": 500,
+						"greyscale": false,
+						"projection": "equirectangular",
+						"cube": "assets/cube/pluto/surface_1000"
+					}
+				],
+				"bump": [
+					{
+						"file": "assets/surface/plutobump2k.jpg",
+						"width": 2000,
+						"height": 1000,
+						"greyscale": true,
+						"projection": "equirectangular",
+						"cube": "assets/cube/pluto/bump_2000"
+					},
+					{
+						"file": "assets/surface/plutobump1k.jpg",
+						"width": 1000,
+						"height": 500,
+						"greyscale": true,
+						"projection": "equirectangular",
+						"cube": "assets/cube/pluto/bump_1000"
+					}
+				]
+			}
+		}
+	]
+}
