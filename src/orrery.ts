@@ -20,7 +20,6 @@ import { bodyMaterial, ringMaterial } from "./globe.js";
 import { asset, SECOND, TWO_PI } from "./utility.js";
 
 import {
-	assertNoCollisions,
 	bodyRadius,
 	moonOrbitRadius,
 	orbitPeriodSeconds,
