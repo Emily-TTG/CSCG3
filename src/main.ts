@@ -17,7 +17,7 @@ import {
 import { system } from "./orrery.js";
 
 const canvas = document.getElementById("surface") as HTMLCanvasElement;
-const engine = new Engine(canvas, true);
+const engine = new Engine(canvas, true, undefined, true);
 const scene = new Scene(engine);
 
 const camera = new ArcRotateCamera("camera", Tools.ToRadians(215), Tools.ToRadians(72), 13, new Vector3(0, 2.2, 0), scene);
