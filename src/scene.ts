@@ -17,7 +17,8 @@ import {
 
 import {
 	asset,
-	SECOND
+	SECOND,
+	TWO_PI
 } from "./utility.js";
 
 const WALK_RADIUS = 4;
@@ -28,26 +29,85 @@ const SKYBOX_ORBIT = 0.005;
 
 
 const UP = -Math.PI / 2;
+const DOWN = Math.PI / 2;
 
-// TODO 3: swing the limbs so that it walks rather than slides.
-//   - drive the swing from a sine wave whose phase advances with theta,
-//     so the steps stay in step with the distance travelled
-//   - opposite arm and leg swing together
-//   - knees and elbows bend only one way: think about how to do that
-//   - when `walking` is false, all joint angles are 0
-// Set the angles on figure.joints.<name>.rotation.x
+const JOINT_SWELL = 1.3;
+
+const PELVIS_HEIGHT = 1.9;
+const THIGH = 0.75;
+const SHIN = 0.7;
+const LEG = THIGH + SHIN;
+
+const STEP = (TWO_PI * WALK_RADIUS) / STRIDES_PER_LAP;
+
+const STANCE_BIAS = 0.5;
+const STANCE_FRACTION = 0.64;
+
+const HIP_SWING = Math.asin(Math.min(1, (STANCE_FRACTION * STEP) / (2 * LEG)));
+
+const KNEE_SWING = 1.0;
+const KNEE_SHARPNESS = 9;
+const KNEE_LEAD = 0.8;
+const KNEE_STANCE = 0.05;
+
+const SHOULDER_SWING = 0.9 * HIP_SWING;
+const ELBOW_FORWARD = 0.5;
+const ELBOW_BACK = 0.15;
+
+const BOB = THIGH + SHIN * Math.cos(KNEE_STANCE) - LEG * Math.cos(HIP_SWING);
+
+const phase = (phase: number): number => phase + STANCE_BIAS * Math.sin(phase);
+const bump = (phase: number, sharpness: number): number => Math.sin(phase / 2) ** (2 * sharpness);
+
+interface Motion {
+	phase: number;
+	sweep: number;
+	// -1 backwards, +1 forwards.
+	fold: number;
+	swingFlex: number;
+	stanceFlex: number;
+	lead: number;
+	sharpness: number;
+}
+
+interface Shape {
+	at: Vector3;
+	upperRadius: number;
+	upperLength: number;
+	lowerRadius: number;
+	lowerLength: number;
+	endRadius: number;
+}
+
+interface Limb extends Motion {
+	base: TransformNode;
+	hinge: TransformNode;
+}
+
+// base -> upper bone -> hinge -> lower bone -> hand or foot.
+function limb(scene: Scene, parent: TransformNode, shape: Shape, motion: Motion): Limb {
+	const base = joint(scene, parent, shape.at);
+	base.rotation.x = DOWN;
+	ball(scene, base, shape.upperRadius * JOINT_SWELL, COLORS.yellow);
+	bone(scene, base, shape.upperRadius, shape.upperLength, COLORS.blue);
+
+	const hinge = joint(scene, base, new Vector3(0, 0, shape.upperLength));
+	ball(scene, hinge, shape.lowerRadius * JOINT_SWELL, COLORS.yellow);
+	bone(scene, hinge, shape.lowerRadius, shape.lowerLength, COLORS.blue);
+
+	const end = joint(scene, hinge, new Vector3(0, 0, shape.lowerLength));
+	ball(scene, end, shape.endRadius, COLORS.cyan);
+
+	return { base, hinge, ...motion };
+}
 
 export function figure(scene: Scene): void {
 	const anchor = new TransformNode("figure-anchor", scene, true);
 
-	scene.onBeforeRenderObservable.add(() => {
-		anchor.rotation.y += ((2 * Math.PI) / (LAP * SECOND)) * scene.getEngine().getDeltaTime();
-	});
+	const pelvis = joint(scene, anchor, new Vector3(WALK_RADIUS, PELVIS_HEIGHT, 0));
+	ball(scene, pelvis, 0.35, COLORS.green);
 
-	const root = joint(scene, anchor, new Vector3(WALK_RADIUS, 1.9, 0));
-	ball(scene, root, 0.35, COLORS.green);
-
-	const chest = joint(scene, root, new Vector3(0, 0.75, 0));
+	const chest = joint(scene, pelvis, new Vector3(0, 0.75, 0));
 	ball(scene, chest, 0.45, COLORS.green);
 
 	const neck = joint(scene, chest, new Vector3(0, 0.45, 0));
@@ -57,23 +117,68 @@ export function figure(scene: Scene): void {
 	const head = joint(scene, neck, new Vector3(0, 0, 0.55));
 	ball(scene, head, 0.33, COLORS.red);
 
-	/* ---- TODO: arms -------------------------------------------------- */
-	// For each side (left and right):
-	//   shoulder joint on the chest, at about (±0.6, 0.35, 0), with a ball
-	//   an upper arm bone hanging down (radius ~0.12, length ~0.6)
-	//   an elbow joint at the end of that bone, with a ball
-	//   a forearm bone (radius ~0.1, length ~0.55)
-	//   a hand ball at the end of the forearm
-	// Write it once as a helper function and call it twice, with a side of
-	// +1 and −1, rather than copying the code.
+	const limbs: Limb[] = [];
+	for (const side of [1, -1]) {
+		// Opposite arm and leg swing together, so they share a phase.
+		const near = side > 0 ? 0 : Math.PI;
+		const far = Math.PI - near;
 
-	/* ---- TODO: legs -------------------------------------------------- */
-	// For each side, hanging off the root (the pelvis):
-	//   hip joint at about (±0.25, −0.15, 0), with a ball
-	//   a thigh bone hanging down (radius ~0.16, length ~0.75)
-	//   a knee joint at the end of the thigh, with a ball
-	//   a shin bone (radius ~0.13, length ~0.7)
-	//   a foot ball at the end of the shin
+		limbs.push(limb(scene, chest, {
+			at: new Vector3(side * 0.6, 0.35, 0),
+			upperRadius: 0.12,
+			upperLength: 0.6,
+			lowerRadius: 0.1,
+			lowerLength: 0.55,
+			endRadius: 0.14
+		}, {
+			phase: far,
+			sweep: SHOULDER_SWING,
+			fold: 1,
+			swingFlex: ELBOW_FORWARD,
+			stanceFlex: ELBOW_BACK,
+			lead: 0,
+			sharpness: 1
+		}));
+
+		limbs.push(limb(scene, pelvis, {
+			at: new Vector3(side * 0.25, -0.15, 0),
+			upperRadius: 0.16,
+			upperLength: THIGH,
+			lowerRadius: 0.13,
+			lowerLength: SHIN,
+			endRadius: 0.18
+		}, {
+			phase: near,
+			sweep: HIP_SWING,
+			fold: -1,
+			swingFlex: KNEE_SWING,
+			stanceFlex: KNEE_STANCE,
+			lead: KNEE_LEAD,
+			sharpness: KNEE_SHARPNESS
+		}));
+	}
+
+	// One clock for the lap, the stride, the bob and every joint angle, so
+	// that nothing can drift out of step with the distance travelled.
+	let elapsed = 0;
+	scene.onBeforeRenderObservable.add(() => {
+		elapsed += scene.getEngine().getDeltaTime() / SECOND;
+
+		const theta = (TWO_PI / LAP) * elapsed;
+		const stride = theta * STRIDES_PER_LAP;
+
+		anchor.rotation.y = theta;
+		// Twice a stride: once over each planted foot.
+		pelvis.position.y = PELVIS_HEIGHT + BOB * Math.cos(phase(stride)) ** 2;
+
+		for (const l of limbs) {
+			const psi = phase(stride + l.phase);
+			l.base.rotation.x = DOWN + l.sweep * Math.sin(psi);
+			l.hinge.rotation.x = l.fold * (
+				l.swingFlex * bump(psi + Math.PI + l.lead, l.sharpness) +
+				l.stanceFlex * bump(psi, 1));
+		}
+	});
 }
 
 // Based on https://www.babylonjs-playground.com/#UU7RQ#245.
