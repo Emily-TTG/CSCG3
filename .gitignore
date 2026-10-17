@@ -3,5 +3,5 @@ dist/
 
 *.pyc
 
-public/assets/cube/
-public/assets/derived/
+# built and deployed by .github/workflows/deploy.yml
+docs/

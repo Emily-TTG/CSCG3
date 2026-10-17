@@ -11,7 +11,7 @@ export type TextureRole =
 //       membership even from JSON data sources.
 
 export interface Variant {
-	file: string;
+	file?: string;
 	width: number;
 	height: number;
 	greyscale: boolean;
@@ -98,7 +98,12 @@ export function pickVariant(variants: Variant[] | undefined, maxWidth: number): 
 	return usable.find(v => v.width <= maxWidth) ?? usable[usable.length - 1];
 }
 
+export interface StripVariant extends Variant {
+	file: string;
+}
+
 // The 2D strip variant for rings.
-export function stripVariant(variants: Variant[] | undefined): Variant | undefined {
-	return (variants ?? []).find(v => v.projection === "ringStrip");
+export function stripVariant(variants: Variant[] | undefined): StripVariant | undefined {
+	return (variants ?? []).find(
+		(v): v is StripVariant => v.projection === "ringStrip" && typeof v.file === "string");
 }
