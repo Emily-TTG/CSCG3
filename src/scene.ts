@@ -27,6 +27,8 @@ const STRIDES_PER_LAP = 16;
 
 const SKYBOX_ORBIT = 0.005;
 
+// NOTE(Emily): The gait of the figure is a little lopsided/limping. Not fully
+//              sure what's causing it.
 
 const UP = -Math.PI / 2;
 const DOWN = Math.PI / 2;
