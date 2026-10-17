@@ -16,7 +16,7 @@ import {
 
 import { GeometryBuffer, mesh } from "./geometry.js";
 import { sphere, annulus } from "./solids.js";
-import { bodyMaterial, ringMaterial } from "./globe.js";
+import { bodyMaterial, coronaMaterial, ringMaterial } from "./globe.js";
 import { asset, SECOND, TWO_PI } from "./utility.js";
 
 import {
@@ -30,6 +30,7 @@ import {
 } from "./scale.js";
 
 const RING_SEGMENTS = 96;
+const CORONA_DETAIL = 12;
 const TIME_SCALE = 0.15;
 
 // Irrationals to avoid weird repeats.
@@ -70,6 +71,8 @@ function materialFor(scene: Scene, body: Body, sceneRadius: number) {
 	const surface = pickVariant(body.textures.surface, budget);
 	const bump = pickVariant(body.textures.bump, budget);
 
+	const star = body.star;
+
 	return bodyMaterial(scene, body.id, {
 		surface: surface ? asset(surface.cube!) : undefined,
 		bump: bump ? asset(bump.cube!) : undefined,
@@ -77,7 +80,15 @@ function materialFor(scene: Scene, body: Body, sceneRadius: number) {
 		baseColor: body.material?.baseColor
 			? Color3.FromHexString(body.material.baseColor)
 			: undefined,
-		emissive: body.material?.emissive === true
+		emissive: body.material?.emissive === true,
+		tint: star ? Color3.FromHexString(star.tint) : undefined,
+		limbDarkening: star?.limbDarkening,
+		chromosphere: star ? {
+			color: Color3.FromHexString(star.chromosphere.color),
+			fractionOfRadius: star.chromosphere.renderFractionOfRadius,
+			strength: star.chromosphere.innerRimStrength
+		} : undefined,
+		churn: star?.churn
 	});
 }
 
@@ -106,6 +117,31 @@ function addRing(scene: Scene, body: Body, sceneRadius: number, tilt: TransformN
 	// Parented to tilt, not spin: an annulus and a radial strip are both
 	// rotationally symmetric, so spinning one is invisible work.
 	return mesh(scene, body.id + "-ring", buf, tilt, material);
+}
+
+function addCorona(scene: Scene, body: Body, sceneRadius: number, centre: TransformNode): Mesh | null {
+	const corona = body.star?.corona;
+	if (!corona) return null;
+
+	const buf = new GeometryBuffer();
+	sphere(buf, corona.outerRadii, CORONA_DETAIL);
+
+	const built = mesh(scene, body.id + "-corona", buf, centre,
+		coronaMaterial(scene, body.id + "-corona", {
+			color: Color3.FromHexString(corona.color),
+			outerRadii: corona.outerRadii,
+			intensity: corona.intensity,
+			toneCompression: corona.toneCompression,
+			chromosphere: {
+				color: Color3.FromHexString(body.star!.chromosphere.color),
+				fractionOfRadius: body.star!.chromosphere.renderFractionOfRadius,
+				strength: body.star!.chromosphere.strength
+			}
+		}));
+
+	built.scaling = new Vector3(sceneRadius, sceneRadius, sceneRadius);
+	built.isPickable = false;
+	return built;
 }
 
 // plane -> pivot -> centre -> tilt -> spin -> mesh
@@ -170,7 +206,8 @@ export function system(scene: Scene): SolarSystem {
 		sphere(buf, sceneRadius, sphereDetail(sceneRadius));
 		const built = mesh(scene, body.id, buf, spin, materialFor(scene, body, sceneRadius));
 
-		const ring = addRing(scene, body, sceneRadius, tilt);
+		addRing(scene, body, sceneRadius, tilt);
+		addCorona(scene, body, sceneRadius, centre);
 
 		nodes.set(body.id, { body, plane, pivot, centre, tilt, spin, mesh: built, sceneRadius });
 

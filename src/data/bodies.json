@@ -22,6 +22,50 @@
 						"cube": "assets/cube/sun/surface_1024"
 					}
 				]
+			},
+			"star": {
+				"effectiveTempK": 5772,
+
+				"photosphereColor-comment-0": "Planck at 5772 K through CIE 1931 to sRGB",
+				"photosphereColor": "#fef0e9",
+
+				"limbDarkening": {
+					"comment-0": "I(mu)/I(0) = 1 - u1(1-mu) - u2(1-mu)^2",
+
+					"u1": 0.93,
+					"u2": -0.23,
+					"wavelengthNm": 550
+				},
+				"chromosphere": {
+					"comment-0": "Rendered as a shell outside the photosphere. Color H-alpha, 656.3 nm",
+					"comment-1": "H-alpha at 656.28 nm through CIE 1931 to sRGB is #ff004b, hue 342deg",
+					"comment-2": "Mix continuumFraction of 5772 K photospheric continuum",
+
+					"thicknessKm": 2100,
+					"trueFractionOfRadius": 0.00302,
+					"renderFractionOfRadius": 0.51,
+					"exaggeration": 33.1,
+					"color": "#ff596c",
+					"strength": 0.35,
+					"innerRimStrength": 0.5,
+					"continuumFraction": 0.28
+				},
+				"corona": {
+					"comment-0": "Baumbach-Allen K-corona: B(r) = 0.0532 r^-2.5 + 1.425 r^-7 + 2.565 r^-17, in 1e-6 B_sun, r in solar radii",
+					"comment-1": "Capped to stop it from eating mercury",
+
+					"outerRadii": 2.5,
+					"color": "#fff8f2",
+					"intensity": 0.6,
+					"toneCompression": 0.3
+				},
+
+				"tint": "#ffffff",
+				"tintNeutralised": "#b9b3ff",
+				"churn": {
+					"amount": 0.114,
+					"speed": 0.22
+				}
 			}
 		},
 		{

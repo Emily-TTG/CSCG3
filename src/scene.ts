@@ -88,7 +88,6 @@ export function sky(scene: Scene): void {
 		"_left.png", "_bottom.png", "_back.png"
 	]);
 	material.reflectionTexture.coordinatesMode = Texture.SKYBOX_MODE;
-	material.reflectionTexture.level = 2.0;
 
 	const skybox = MeshBuilder.CreateBox("skybox", {
 		size: 500.0

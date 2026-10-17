@@ -77,7 +77,8 @@ export function spinPeriodSeconds(body: Body): number {
 export function sphereDetail(sceneRadius: number): number {
 	if (sceneRadius < 0.12) return 4;
 	if (sceneRadius < 0.5) return 8;
-	return 16;
+	if (sceneRadius < 1.5) return 16;
+	return 32;
 }
 
 export function textureBudget(sceneRadius: number): number {

@@ -1,5 +1,6 @@
 import {
 	Color3,
+	Constants,
 	CubeTexture,
 	Material,
 	MaterialDefines,
@@ -12,6 +13,8 @@ import {
 	UniformBuffer
 } from "@babylonjs/core";
 
+import { SECOND } from "./utility.js";
+
 // NOTE(Emily): Babylon offers this slightly wacky shader injection system.
 //              I'm not a huge fan of how it's structured but it makes things
 //              easier for just adding the knobs we need for globe rendering.
@@ -23,12 +26,22 @@ class BodyMapPlugin extends MaterialPluginBase {
 	bumpStrength = 0.6;
 	bumpEpsilon = 0.004;
 	emissiveLevel = 1.0;
+	tint = new Color3(1, 1, 1);
+	limbU1 = 0.0;
+	limbU2 = 0.0;
+	chromoColor = new Color3(0, 0, 0);
+	chromoFraction = 0.0;
+	chromoStrength = 0.0;
+	churnAmount = 0.0;
+	churnSpeed = 0.0;
+	time = 0.0;
 
 	constructor(material: Material) {
 		super(material, "BodyMap", 200, {
 			GLOBEMAP: false,
 			GLOBEBUMP: false,
-			GLOBEEMISSIVE: false
+			GLOBEEMISSIVE: false,
+			GLOBECHURN: false
 		});
 
 		this._enable(true);
@@ -42,6 +55,7 @@ class BodyMapPlugin extends MaterialPluginBase {
 		defines["GLOBEMAP"] = this.map !== null;
 		defines["GLOBEBUMP"] = this.bump !== null;
 		defines["GLOBEEMISSIVE"] = this.emissive && this.map !== null;
+		defines["GLOBECHURN"] = this.churnAmount > 0;
 	}
 
 	isReadyForSubMesh(): boolean {
@@ -57,18 +71,45 @@ class BodyMapPlugin extends MaterialPluginBase {
 	getUniforms(): { ubo: { name: string; size: number; type: string }[]; fragment: string } {
 		return {
 			ubo: [
+				{ name: "globeTint", size: 3, type: "vec3" },
+				{ name: "globeChromoColor", size: 3, type: "vec3" },
 				{ name: "globeBumpStrength", size: 1, type: "float" },
 				{ name: "globeBumpEpsilon", size: 1, type: "float" },
-				{ name: "globeEmissiveLevel", size: 1, type: "float" }
+				{ name: "globeEmissiveLevel", size: 1, type: "float" },
+				{ name: "globeLimbU1", size: 1, type: "float" },
+				{ name: "globeLimbU2", size: 1, type: "float" },
+				{ name: "globeChromoFraction", size: 1, type: "float" },
+				{ name: "globeChromoStrength", size: 1, type: "float" },
+				{ name: "globeChurnAmount", size: 1, type: "float" },
+				{ name: "globeChurnSpeed", size: 1, type: "float" },
+				{ name: "globeTime", size: 1, type: "float" }
 			],
 			fragment:
+				"uniform vec3 globeTint;\n" +
+				"uniform vec3 globeChromoColor;\n" +
 				"uniform float globeBumpStrength;\n" +
 				"uniform float globeBumpEpsilon;\n" +
-				"uniform float globeEmissiveLevel;\n"
+				"uniform float globeEmissiveLevel;\n" +
+				"uniform float globeLimbU1;\n" +
+				"uniform float globeLimbU2;\n" +
+				"uniform float globeChromoFraction;\n" +
+				"uniform float globeChromoStrength;\n" +
+				"uniform float globeChurnAmount;\n" +
+				"uniform float globeChurnSpeed;\n" +
+				"uniform float globeTime;\n"
 		};
 	}
 
 	bindForSubMesh(uniformBuffer: UniformBuffer): void {
+		uniformBuffer.updateColor3("globeTint", this.tint);
+		uniformBuffer.updateColor3("globeChromoColor", this.chromoColor);
+		uniformBuffer.updateFloat("globeLimbU1", this.limbU1);
+		uniformBuffer.updateFloat("globeLimbU2", this.limbU2);
+		uniformBuffer.updateFloat("globeChromoFraction", this.chromoFraction);
+		uniformBuffer.updateFloat("globeChromoStrength", this.chromoStrength);
+		uniformBuffer.updateFloat("globeChurnAmount", this.churnAmount);
+		uniformBuffer.updateFloat("globeChurnSpeed", this.churnSpeed);
+		uniformBuffer.updateFloat("globeTime", this.time);
 		uniformBuffer.updateFloat("globeBumpStrength", this.bumpStrength);
 		uniformBuffer.updateFloat("globeBumpEpsilon", this.bumpEpsilon);
 		uniformBuffer.updateFloat("globeEmissiveLevel", this.emissiveLevel);
@@ -83,7 +124,7 @@ class BodyMapPlugin extends MaterialPluginBase {
 			return {
 				CUSTOM_VERTEX_DEFINITIONS: `
 					varying vec3 vGlobeDirection;
-					#ifdef GLOBEBUMP
+					#if defined(GLOBEBUMP) || defined(GLOBEEMISSIVE)
 						varying vec3 vGlobeWorldX;
 						varying vec3 vGlobeWorldY;
 						varying vec3 vGlobeWorldZ;
@@ -92,7 +133,7 @@ class BodyMapPlugin extends MaterialPluginBase {
 
 				CUSTOM_VERTEX_MAIN_END: `
 					vGlobeDirection = position;
-					#ifdef GLOBEBUMP
+					#if defined(GLOBEBUMP) || defined(GLOBEEMISSIVE)
 						vGlobeWorldX = finalWorld[0].xyz;
 						vGlobeWorldY = finalWorld[1].xyz;
 						vGlobeWorldZ = finalWorld[2].xyz;
@@ -110,6 +151,8 @@ class BodyMapPlugin extends MaterialPluginBase {
 					#endif
 					#ifdef GLOBEBUMP
 						uniform samplerCube globeBumpMap;
+					#endif
+					#if defined(GLOBEBUMP) || defined(GLOBEEMISSIVE)
 						varying vec3 vGlobeWorldX;
 						varying vec3 vGlobeWorldY;
 						varying vec3 vGlobeWorldZ;
@@ -144,9 +187,51 @@ class BodyMapPlugin extends MaterialPluginBase {
 				`,
 
 				// The star is not lit by anything, including itself.
+				//
+				// viewDirectionW is declared unconditionally at the top of
+				// main(), so neither needs a new varying or uniform.
 				CUSTOM_FRAGMENT_BEFORE_FRAGCOLOR: `
 					#ifdef GLOBEEMISSIVE
-						color.rgb = textureCube(globeMap, normalize(vGlobeDirection)).rgb * globeEmissiveLevel;
+					{
+						mat3 gStarWorld = mat3(vGlobeWorldX, vGlobeWorldY, vGlobeWorldZ);
+						vec3 starN = normalize(gStarWorld * normalize(vGlobeDirection));
+						float mu = clamp(dot(starN, viewDirectionW), 0.0, 1.0);
+						float omu = 1.0 - mu;
+
+						// Quadratic limb darkening. At 550 nm the solar limb is
+						// 0.30 of centre brightness.
+						float limb = clamp(1.0 - globeLimbU1 * omu - globeLimbU2 * omu * omu, 0.0, 1.0);
+
+						// Relatively cheesy churn -- it mutates a scan texture
+						// so it looks a bit like the sun has a skin that's
+						// being stirred but it's better than static.
+						vec3 look = normalize(vGlobeDirection);
+						#ifdef GLOBECHURN
+						{
+							float ct = globeTime * globeChurnSpeed;
+							vec3 w1 = vec3(sin(look.y * 11.0 + ct),
+							               sin(look.z * 11.0 + ct * 1.3),
+							               sin(look.x * 11.0 + ct * 0.7));
+							vec3 w2 = vec3(sin(look.z * 23.0 - ct * 1.7),
+							               sin(look.x * 23.0 - ct * 1.1),
+							               sin(look.y * 23.0 - ct * 1.9));
+							look = normalize(look + (w1 * 0.7 + w2 * 0.3) * globeChurnAmount);
+						}
+						#endif
+
+						vec3 star = textureCube(globeMap, look).rgb * globeTint * limb;
+
+						// Chromosphere: an H-alpha rim. rho is the projected
+						// radius, so the manifest's fraction is measured where
+						// visible, rather than being hidden inside
+						// a falloff exponent.
+						float rho = sqrt(max(0.0, 1.0 - mu * mu));
+
+						float rim = smoothstep(1.0 - globeChromoFraction, 1.0, rho);
+						star = mix(star, globeChromoColor, rim * globeChromoStrength);
+
+						color.rgb = star * globeEmissiveLevel;
+					}
 					#endif
 				`
 			};
@@ -166,6 +251,10 @@ export interface BodyMaterialOptions {
 	baseColor?: Color3;
 	emissive?: boolean;
 	emissiveLevel?: number;
+	tint?: Color3;
+	limbDarkening?: { u1: number; u2: number };
+	chromosphere?: { color: Color3; fractionOfRadius: number; strength: number };
+	churn?: { amount: number; speed: number };
 	// Diffuse multiplier.
 	brightness?: number;
 }
@@ -189,10 +278,31 @@ export function bodyMaterial(scene: Scene, name: string, options: BodyMaterialOp
 		plugin.bumpEpsilon = options.bumpEpsilon ?? 0.004;
 	}
 
+	if (options.tint) plugin.tint = options.tint;
+
 	if (options.emissive) {
 		plugin.emissive = true;
 		plugin.emissiveLevel = options.emissiveLevel ?? 1;
 		material.disableLighting = true;
+
+		if (options.limbDarkening) {
+			plugin.limbU1 = options.limbDarkening.u1;
+			plugin.limbU2 = options.limbDarkening.u2;
+		}
+		if (options.chromosphere) {
+			plugin.chromoColor = options.chromosphere.color;
+			plugin.chromoFraction = options.chromosphere.fractionOfRadius;
+			plugin.chromoStrength = options.chromosphere.strength;
+		}
+		if (options.churn && options.churn.amount > 0) {
+			plugin.churnAmount = options.churn.amount;
+			plugin.churnSpeed = options.churn.speed;
+			let elapsed = 0;
+			scene.onBeforeRenderObservable.add(() => {
+				elapsed += scene.getEngine().getDeltaTime() / SECOND;
+				plugin.time = elapsed;
+			});
+		}
 	}
 
 	material.markAsDirty(Material.TextureDirtyFlag);
@@ -311,6 +421,188 @@ export function ringMaterial(scene: Scene, name: string, options: RingMaterialOp
 	if (options.alpha) plugin.alpha = new Texture(options.alpha, scene);
 	plugin.inner = options.innerRadius;
 	plugin.outer = options.outerRadius;
+
+	material.markAsDirty(Material.TextureDirtyFlag);
+	return material;
+}
+
+// Renders the sun's corona as a translucent shell around the star whose radial
+// profile follows the Baumbach-Allen K-corona law.
+//
+// Using ray intersections through the shell to accumulate atmospheric light
+// interactions.
+//
+class CoronaPlugin extends MaterialPluginBase {
+	colour = new Color3(1, 1, 1);
+	outerRadii = 3;
+	intensity = 0.55;
+	compression = 0.18;
+	chromoColor = new Color3(0, 0, 0);
+	chromoFraction = 0.0;
+	chromoStrength = 0.0;
+
+	constructor(material: Material) {
+		super(material, "Corona", 210, { CORONA: false });
+		this._enable(true);
+	}
+
+	getClassName(): string {
+		return "CoronaPlugin";
+	}
+
+	prepareDefines(defines: MaterialDefines): void {
+		defines["CORONA"] = true;
+	}
+
+	getUniforms(): { ubo: { name: string; size: number; type: string }[]; fragment: string } {
+		return {
+			ubo: [
+				{ name: "coronaColor", size: 3, type: "vec3" },
+				{ name: "coronaChromoColor", size: 3, type: "vec3" },
+				{ name: "coronaOuter", size: 1, type: "float" },
+				{ name: "coronaIntensity", size: 1, type: "float" },
+				{ name: "coronaCompression", size: 1, type: "float" },
+				{ name: "coronaChromoFraction", size: 1, type: "float" },
+				{ name: "coronaChromoStrength", size: 1, type: "float" }
+			],
+			fragment:
+				"uniform vec3 coronaColor;\n" +
+				"uniform vec3 coronaChromoColor;\n" +
+				"uniform float coronaOuter;\n" +
+				"uniform float coronaIntensity;\n" +
+				"uniform float coronaCompression;\n" +
+				"uniform float coronaChromoFraction;\n" +
+				"uniform float coronaChromoStrength;\n"
+		};
+	}
+
+	bindForSubMesh(uniformBuffer: UniformBuffer): void {
+		uniformBuffer.updateColor3("coronaColor", this.colour);
+		uniformBuffer.updateColor3("coronaChromoColor", this.chromoColor);
+		uniformBuffer.updateFloat("coronaChromoFraction", this.chromoFraction);
+		uniformBuffer.updateFloat("coronaChromoStrength", this.chromoStrength);
+		uniformBuffer.updateFloat("coronaOuter", this.outerRadii);
+		uniformBuffer.updateFloat("coronaIntensity", this.intensity);
+		uniformBuffer.updateFloat("coronaCompression", this.compression);
+	}
+
+	getCustomCode(shaderType: string, shaderLanguage?: ShaderLanguage): Nullable<{ [point: string]: string }> {
+		if (shaderLanguage === ShaderLanguage.WGSL) return null;
+
+		if (shaderType === "vertex") {
+			return {
+				CUSTOM_VERTEX_DEFINITIONS: `
+					varying vec3 vCoronaPosition;
+					varying vec3 vCoronaWorldX;
+					varying vec3 vCoronaWorldY;
+					varying vec3 vCoronaWorldZ;
+				`,
+				CUSTOM_VERTEX_MAIN_END: `
+					vCoronaPosition = position;
+					vCoronaWorldX = finalWorld[0].xyz;
+					vCoronaWorldY = finalWorld[1].xyz;
+					vCoronaWorldZ = finalWorld[2].xyz;
+				`
+			};
+		}
+
+		if (shaderType === "fragment") {
+			return {
+				CUSTOM_FRAGMENT_DEFINITIONS: `
+					// How far the shell tucks inside rho = 1 to hide the star's
+					// polygonal silhouette.
+					#define CORONA_TUCK 0.985
+					varying vec3 vCoronaPosition;
+					varying vec3 vCoronaWorldX;
+					varying vec3 vCoronaWorldY;
+					varying vec3 vCoronaWorldZ;
+				`,
+				// The shell is built with its radius in stellar radii and then
+				// scaled by the star's scene radius, so working in OBJECT space
+				// means lengths are already in stellar radii with no conversion.
+				CUSTOM_FRAGMENT_BEFORE_FRAGCOLOR: `
+					#ifdef CORONA
+					{
+						// Work backwards to get the eye dir in object view.
+						vec3 d = mat3(vCoronaWorldX, vCoronaWorldY, vCoronaWorldZ) * vCoronaPosition;
+						vec3 centre = vPositionW - d;
+						vec3 rel = vEyePosition.xyz - centre;
+						float s2 = max(dot(vCoronaWorldX, vCoronaWorldX), 1e-8);
+						vec3 eyeObj = vec3(dot(rel, vCoronaWorldX),
+						                   dot(rel, vCoronaWorldY),
+						                   dot(rel, vCoronaWorldZ)) / s2;
+
+						// Distance from the star's centre to the line of sight.
+						vec3 ray = vCoronaPosition - eyeObj;
+						float rho = length(cross(eyeObj, vCoronaPosition)) / max(length(ray), 1e-5);
+
+						float facing = dot(vCoronaPosition, eyeObj - vCoronaPosition);
+						float farSide = 1.0 - step(0.0, facing);
+
+						float r = max(rho, 1.0);
+						float B = 0.0532 * pow(r, -2.5)
+						        + 1.425  * pow(r, -7.0)
+						        + 2.565  * pow(r, -17.0);
+						float a = pow(clamp(B / 4.0432, 0.0, 1.0), coronaCompression);
+
+						// Inside rho = 1; rho is analytic wrapping a polygon
+						// whose silhouette sits a bit inside the mathematical
+						// sphere. A little bit of overlap avoids a dark ring
+						// artefact at the contact point.
+						a *= smoothstep(CORONA_TUCK, 1.0, rho);
+						a *= 1.0 - smoothstep(coronaOuter * 0.5, coronaOuter, rho);
+
+						// Chromosphere band.
+						float band = smoothstep(CORONA_TUCK, 1.0, rho) * (1.0 - smoothstep(1.0, 1.0 + coronaChromoFraction, rho));
+
+						float ca = a * coronaIntensity;
+						float ha = band * coronaChromoStrength;
+						float sum = (ca + ha) * farSide;
+						color.rgb = sum > 0.0 ? (coronaColor * ca + coronaChromoColor * ha) / sum : vec3(0.0);
+
+						// Some cheap dithering to avoid harsh banding in the corona.
+						float ign = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715))));
+						color.a = clamp(sum + (ign - 0.5) / 255.0, 0.0, 1.0);
+					}
+					#endif
+				`
+			};
+		}
+
+		return null;
+	}
+}
+
+export interface CoronaMaterialOptions {
+	color: Color3;
+	outerRadii: number;
+	intensity: number;
+	toneCompression: number;
+	chromosphere?: { color: Color3; fractionOfRadius: number; strength: number };
+	churn?: { amount: number; speed: number };
+}
+
+export function coronaMaterial(scene: Scene, name: string, options: CoronaMaterialOptions): StandardMaterial {
+	const material = new StandardMaterial(name + "-mat", scene);
+	material.disableLighting = true;
+	material.diffuseColor = Color3.Black();
+	material.specularColor = Color3.Black();
+
+	material.alphaMode = Constants.ALPHA_ADD;
+	material.transparencyMode = Material.MATERIAL_ALPHABLEND;
+	material.disableDepthWrite = true;
+	material.backFaceCulling = false;
+
+	const plugin = new CoronaPlugin(material);
+	plugin.colour = options.color;
+	plugin.outerRadii = options.outerRadii;
+	plugin.intensity = options.intensity;
+	plugin.compression = options.toneCompression;
+	if (options.chromosphere) {
+		plugin.chromoColor = options.chromosphere.color;
+		plugin.chromoFraction = options.chromosphere.fractionOfRadius;
+		plugin.chromoStrength = options.chromosphere.strength;
+	}
 
 	material.markAsDirty(Material.TextureDirtyFlag);
 	return material;

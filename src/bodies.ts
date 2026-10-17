@@ -33,6 +33,38 @@ export interface BodyMaterial {
 	baseColor?: string;
 }
 
+export interface LimbDarkening {
+	u1: number;
+	u2: number;
+}
+
+export interface Chromosphere {
+	thicknessKm: number;
+	trueFractionOfRadius: number;
+	renderFractionOfRadius: number;
+	exaggeration: number;
+	color: string;
+	strength: number;
+	innerRimStrength: number;
+}
+
+export interface Corona {
+	outerRadii: number;
+	color: string;
+	intensity: number;
+	toneCompression: number;
+}
+
+export interface StarProfile {
+	effectiveTempK: number;
+	photosphereColor: string;
+	tint: string;
+	limbDarkening: LimbDarkening;
+	chromosphere: Chromosphere;
+	corona: Corona;
+	churn?: { amount: number; speed: number };
+}
+
 export interface Ring {
 	innerRadiusKm: number;
 	outerRadiusKm: number;
@@ -49,6 +81,7 @@ export interface Body {
 	orbit?: Orbit;
 	material?: BodyMaterial;
 	ring?: Ring;
+	star?: StarProfile;
 	textures: Partial<Record<TextureRole, Variant[]>>;
 }
 
