@@ -69,9 +69,12 @@ export function orbitPeriodSeconds(body: Body, aroundSun: boolean): number {
 		: MOON_YEAR_SECONDS * (days / 27.3217) ** MOON_TIME_POWER;
 }
 
+export function periodSeconds(hours: number): number {
+	return EARTH_DAY_SECONDS * (Math.abs(hours) / 23.9345) ** SPIN_TIME_POWER;
+}
+
 export function spinPeriodSeconds(body: Body): number {
-	const hours = Math.abs(body.rotationPeriodHours);
-	return EARTH_DAY_SECONDS * (hours / 23.9345) ** SPIN_TIME_POWER;
+	return periodSeconds(body.rotationPeriodHours);
 }
 
 export function sphereDetail(sceneRadius: number): number {

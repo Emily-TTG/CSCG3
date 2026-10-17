@@ -33,7 +33,7 @@ figure(scene);
 const solar = system(scene);
 
 const sun = new PointLight("sun", Vector3.Zero(), scene);
-sun.intensity = 1.1;
+sun.intensity = 1.4;
 
 const starlight = new HemisphericLight("starlight", new Vector3(0, 1, 0), scene);
 starlight.intensity = 0.06;

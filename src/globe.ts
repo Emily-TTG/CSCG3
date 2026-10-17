@@ -10,7 +10,8 @@ import {
 	ShaderLanguage,
 	StandardMaterial,
 	Texture,
-	UniformBuffer
+	UniformBuffer,
+	Vector3
 } from "@babylonjs/core";
 
 import { SECOND } from "./utility.js";
@@ -22,6 +23,19 @@ import { SECOND } from "./utility.js";
 class BodyMapPlugin extends MaterialPluginBase {
 	map: Nullable<CubeTexture> = null;
 	bump: Nullable<CubeTexture> = null;
+	specularMask: Nullable<CubeTexture> = null;
+	cloudMap: Nullable<CubeTexture> = null;
+	cloudAlpha: Nullable<CubeTexture> = null;
+	cloudOpacity = 1.0;
+	cloudGain = 1.0;
+	// 1 when the alpha map is dark where the cloud is.
+	cloudAlphaInvert = 0.0;
+	nightMap: Nullable<CubeTexture> = null;
+	nightLevel = 1.0;
+	// sin of the sun depression at which the lights are fully up.
+	nightBand = 0.105;
+	starPosition = new Vector3(0, 0, 0);
+	cloudPhase = 0.0;
 	emissive = false;
 	bumpStrength = 0.6;
 	bumpEpsilon = 0.004;
@@ -40,6 +54,9 @@ class BodyMapPlugin extends MaterialPluginBase {
 		super(material, "BodyMap", 200, {
 			GLOBEMAP: false,
 			GLOBEBUMP: false,
+			GLOBESPECULAR: false,
+			GLOBECLOUDS: false,
+			GLOBENIGHT: false,
 			GLOBEEMISSIVE: false,
 			GLOBECHURN: false
 		});
@@ -54,6 +71,9 @@ class BodyMapPlugin extends MaterialPluginBase {
 	prepareDefines(defines: MaterialDefines): void {
 		defines["GLOBEMAP"] = this.map !== null;
 		defines["GLOBEBUMP"] = this.bump !== null;
+		defines["GLOBESPECULAR"] = this.specularMask !== null;
+		defines["GLOBECLOUDS"] = this.cloudMap !== null && this.cloudAlpha !== null;
+		defines["GLOBENIGHT"] = this.nightMap !== null;
 		defines["GLOBEEMISSIVE"] = this.emissive && this.map !== null;
 		defines["GLOBECHURN"] = this.churnAmount > 0;
 	}
@@ -61,11 +81,16 @@ class BodyMapPlugin extends MaterialPluginBase {
 	isReadyForSubMesh(): boolean {
 		if (this.map && !this.map.isReady()) return false;
 		if (this.bump && !this.bump.isReady()) return false;
+		if (this.specularMask && !this.specularMask.isReady()) return false;
+		if (this.cloudMap && !this.cloudMap.isReady()) return false;
+		if (this.cloudAlpha && !this.cloudAlpha.isReady()) return false;
+		if (this.nightMap && !this.nightMap.isReady()) return false;
 		return true;
 	}
 
 	getSamplers(samplers: string[]): void {
-		samplers.push("globeMap", "globeBumpMap");
+		samplers.push("globeMap", "globeBumpMap", "globeSpecularMask",
+			"globeCloudMap", "globeCloudAlphaMap", "globeNightMap");
 	}
 
 	getUniforms(): { ubo: { name: string; size: number; type: string }[]; fragment: string } {
@@ -73,6 +98,7 @@ class BodyMapPlugin extends MaterialPluginBase {
 			ubo: [
 				{ name: "globeTint", size: 3, type: "vec3" },
 				{ name: "globeChromoColor", size: 3, type: "vec3" },
+				{ name: "globeStarPosition", size: 3, type: "vec3" },
 				{ name: "globeBumpStrength", size: 1, type: "float" },
 				{ name: "globeBumpEpsilon", size: 1, type: "float" },
 				{ name: "globeEmissiveLevel", size: 1, type: "float" },
@@ -82,11 +108,18 @@ class BodyMapPlugin extends MaterialPluginBase {
 				{ name: "globeChromoStrength", size: 1, type: "float" },
 				{ name: "globeChurnAmount", size: 1, type: "float" },
 				{ name: "globeChurnSpeed", size: 1, type: "float" },
+				{ name: "globeCloudOpacity", size: 1, type: "float" },
+				{ name: "globeCloudGain", size: 1, type: "float" },
+				{ name: "globeCloudAlphaInvert", size: 1, type: "float" },
+				{ name: "globeNightLevel", size: 1, type: "float" },
+				{ name: "globeNightBand", size: 1, type: "float" },
+				{ name: "globeCloudPhase", size: 1, type: "float" },
 				{ name: "globeTime", size: 1, type: "float" }
 			],
 			fragment:
 				"uniform vec3 globeTint;\n" +
 				"uniform vec3 globeChromoColor;\n" +
+				"uniform vec3 globeStarPosition;\n" +
 				"uniform float globeBumpStrength;\n" +
 				"uniform float globeBumpEpsilon;\n" +
 				"uniform float globeEmissiveLevel;\n" +
@@ -96,6 +129,12 @@ class BodyMapPlugin extends MaterialPluginBase {
 				"uniform float globeChromoStrength;\n" +
 				"uniform float globeChurnAmount;\n" +
 				"uniform float globeChurnSpeed;\n" +
+				"uniform float globeCloudOpacity;\n" +
+				"uniform float globeCloudGain;\n" +
+				"uniform float globeCloudAlphaInvert;\n" +
+				"uniform float globeNightLevel;\n" +
+				"uniform float globeNightBand;\n" +
+				"uniform float globeCloudPhase;\n" +
 				"uniform float globeTime;\n"
 		};
 	}
@@ -103,18 +142,30 @@ class BodyMapPlugin extends MaterialPluginBase {
 	bindForSubMesh(uniformBuffer: UniformBuffer): void {
 		uniformBuffer.updateColor3("globeTint", this.tint);
 		uniformBuffer.updateColor3("globeChromoColor", this.chromoColor);
+		uniformBuffer.updateFloat3("globeStarPosition",
+			this.starPosition.x, this.starPosition.y, this.starPosition.z);
 		uniformBuffer.updateFloat("globeLimbU1", this.limbU1);
 		uniformBuffer.updateFloat("globeLimbU2", this.limbU2);
 		uniformBuffer.updateFloat("globeChromoFraction", this.chromoFraction);
 		uniformBuffer.updateFloat("globeChromoStrength", this.chromoStrength);
 		uniformBuffer.updateFloat("globeChurnAmount", this.churnAmount);
 		uniformBuffer.updateFloat("globeChurnSpeed", this.churnSpeed);
+		uniformBuffer.updateFloat("globeCloudOpacity", this.cloudOpacity);
+		uniformBuffer.updateFloat("globeCloudGain", this.cloudGain);
+		uniformBuffer.updateFloat("globeCloudAlphaInvert", this.cloudAlphaInvert);
+		uniformBuffer.updateFloat("globeNightLevel", this.nightLevel);
+		uniformBuffer.updateFloat("globeNightBand", this.nightBand);
+		uniformBuffer.updateFloat("globeCloudPhase", this.cloudPhase);
 		uniformBuffer.updateFloat("globeTime", this.time);
 		uniformBuffer.updateFloat("globeBumpStrength", this.bumpStrength);
 		uniformBuffer.updateFloat("globeBumpEpsilon", this.bumpEpsilon);
 		uniformBuffer.updateFloat("globeEmissiveLevel", this.emissiveLevel);
 		if (this.map) uniformBuffer.setTexture("globeMap", this.map);
 		if (this.bump) uniformBuffer.setTexture("globeBumpMap", this.bump);
+		if (this.specularMask) uniformBuffer.setTexture("globeSpecularMask", this.specularMask);
+		if (this.cloudMap) uniformBuffer.setTexture("globeCloudMap", this.cloudMap);
+		if (this.cloudAlpha) uniformBuffer.setTexture("globeCloudAlphaMap", this.cloudAlpha);
+		if (this.nightMap) uniformBuffer.setTexture("globeNightMap", this.nightMap);
 	}
 
 	getCustomCode(shaderType: string, shaderLanguage?: ShaderLanguage): Nullable<{ [point: string]: string }> {
@@ -124,7 +175,7 @@ class BodyMapPlugin extends MaterialPluginBase {
 			return {
 				CUSTOM_VERTEX_DEFINITIONS: `
 					varying vec3 vGlobeDirection;
-					#if defined(GLOBEBUMP) || defined(GLOBEEMISSIVE)
+					#if defined(GLOBEBUMP) || defined(GLOBEEMISSIVE) || defined(GLOBENIGHT)
 						varying vec3 vGlobeWorldX;
 						varying vec3 vGlobeWorldY;
 						varying vec3 vGlobeWorldZ;
@@ -133,7 +184,7 @@ class BodyMapPlugin extends MaterialPluginBase {
 
 				CUSTOM_VERTEX_MAIN_END: `
 					vGlobeDirection = position;
-					#if defined(GLOBEBUMP) || defined(GLOBEEMISSIVE)
+					#if defined(GLOBEBUMP) || defined(GLOBEEMISSIVE) || defined(GLOBENIGHT)
 						vGlobeWorldX = finalWorld[0].xyz;
 						vGlobeWorldY = finalWorld[1].xyz;
 						vGlobeWorldZ = finalWorld[2].xyz;
@@ -152,18 +203,46 @@ class BodyMapPlugin extends MaterialPluginBase {
 					#ifdef GLOBEBUMP
 						uniform samplerCube globeBumpMap;
 					#endif
-					#if defined(GLOBEBUMP) || defined(GLOBEEMISSIVE)
+					#ifdef GLOBESPECULAR
+						uniform samplerCube globeSpecularMask;
+					#endif
+					#ifdef GLOBECLOUDS
+						uniform samplerCube globeCloudMap;
+						uniform samplerCube globeCloudAlphaMap;
+					#endif
+					#ifdef GLOBENIGHT
+						uniform samplerCube globeNightMap;
+					#endif
+					#if defined(GLOBEBUMP) || defined(GLOBEEMISSIVE) || defined(GLOBENIGHT)
 						varying vec3 vGlobeWorldX;
 						varying vec3 vGlobeWorldY;
 						varying vec3 vGlobeWorldZ;
 					#endif
 				`,
 
+				CUSTOM_FRAGMENT_MAIN_BEGIN: "float gGlobeCloud = 0.0;",
+
 				// baseColor is the slot diffuseTexture would fill, and it
 				// multiplies the lit term rather than being added after it.
 				CUSTOM_FRAGMENT_UPDATE_DIFFUSE: `
 					#ifdef GLOBEMAP
 						baseColor.rgb = textureCube(globeMap, normalize(vGlobeDirection)).rgb;
+					#endif
+					#ifdef GLOBECLOUDS
+					{
+						vec3 gcd = normalize(vGlobeDirection);
+						float gcs = sin(globeCloudPhase);
+						float gcc = cos(globeCloudPhase);
+						gcd = vec3(gcc * gcd.x - gcs * gcd.z, gcd.y, gcs * gcd.x + gcc * gcd.z);
+
+						float graw = textureCube(globeCloudAlphaMap, gcd).r;
+						gGlobeCloud = clamp(
+							mix(graw, 1.0 - graw, globeCloudAlphaInvert) * globeCloudOpacity,
+							0.0, 1.0);
+
+						baseColor.rgb = mix(baseColor.rgb,
+							textureCube(globeCloudMap, gcd).rgb * globeCloudGain, gGlobeCloud);
+					}
 					#endif
 				`,
 
@@ -180,10 +259,41 @@ class BodyMapPlugin extends MaterialPluginBase {
 						float gdu = textureCube(globeBumpMap, normalize(gn + gt * globeBumpEpsilon)).r - gh;
 						float gdv = textureCube(globeBumpMap, normalize(gn + gb * globeBumpEpsilon)).r - gh;
 						vec3 gp = normalize(gn - globeBumpStrength * (gdu * gt + gdv * gb) / globeBumpEpsilon);
+						gp = normalize(mix(gp, gn, gGlobeCloud));
 						mat3 gWorld = mat3(vGlobeWorldX, vGlobeWorldY, vGlobeWorldZ);
 						normalW = normalize(gWorld * gp);
 					}
 					#endif
+				`,
+
+				CUSTOM_FRAGMENT_BEFORE_FOG: `
+					#ifdef GLOBENIGHT
+					{
+						mat3 gNightWorld = mat3(vGlobeWorldX, vGlobeWorldY, vGlobeWorldZ);
+						vec3 gNightN = normalize(gNightWorld * normalize(vGlobeDirection));
+						vec3 gSun = normalize(globeStarPosition - vPositionW);
+
+						// Up over civil twilight, out by sunrise.
+						float gDark = 1.0 - smoothstep(-globeNightBand, 0.0, dot(gNightN, gSun));
+
+						// Cities do not shine through cloud.
+						color.rgb += textureCube(globeNightMap, normalize(vGlobeDirection)).rgb
+							* (gDark * globeNightLevel * (1.0 - gGlobeCloud));
+					}
+					#endif
+				`,
+
+				// NOTE(Emily): specularColor is declared after
+				// CUSTOM_FRAGMENT_BEFORE_LIGHTS and consumed by the light
+				// loop, with no injection point in between, so the declaration
+				// itself gets rewritten. A leading "!" marks the key as a
+				// regex to replace rather than a hook to insert before.
+				"!vec3\\s+specularColor\\s*=\\s*vSpecularColor\\.rgb\\s*;": `
+					vec3 specularColor = vSpecularColor.rgb;
+					#ifdef GLOBESPECULAR
+						specularColor *= textureCube(globeSpecularMask, normalize(vGlobeDirection)).r;
+					#endif
+					specularColor *= 1.0 - gGlobeCloud;
 				`,
 
 				// The star is not lit by anything, including itself.
@@ -257,6 +367,30 @@ export interface BodyMaterialOptions {
 	churn?: { amount: number; speed: number };
 	// Diffuse multiplier.
 	brightness?: number;
+	specularMask?: string;
+	specularReflectance?: number;
+	// Specular exponent.
+	glossiness?: number;
+	clouds?: string;
+	cloudsAlpha?: string;
+	cloudOpacity?: number;
+	cloudGain?: number;
+	cloudAlphaIsInverted?: boolean;
+	night?: string;
+	nightLevel?: number;
+	civilTwilightDeg?: number;
+	starPosition?: Vector3;
+}
+
+// Fresnel reflectance at normal incidence for a dielectric in vacuum.
+export function fresnel0(refractiveIndex: number): number {
+	const r = (refractiveIndex - 1) / (refractiveIndex + 1);
+	return r * r;
+}
+
+export function setCloudPhase(material: StandardMaterial, phase: number): void {
+	const plugin = material.pluginManager?.getPlugin<BodyMapPlugin>("BodyMap");
+	if (plugin) plugin.cloudPhase = phase;
 }
 
 export function bodyMaterial(scene: Scene, name: string, options: BodyMaterialOptions): StandardMaterial {
@@ -264,7 +398,15 @@ export function bodyMaterial(scene: Scene, name: string, options: BodyMaterialOp
 
 	const brightness = options.brightness ?? 1;
 	material.diffuseColor = (options.baseColor ?? Color3.White()).scale(brightness);
-	material.specularColor = new Color3(0.08, 0.08, 0.08);
+
+	// Babylon's Blinn-Phong lobe is unnormalised. (n + 8) / 8pi puts the energy
+	// back where it belongs.
+	const reflectance = options.specularReflectance ?? 0.08;
+	const glossiness = options.glossiness ?? 64;
+	const peak = (reflectance * (glossiness + 8)) / (8 * Math.PI);
+
+	material.specularColor = new Color3(peak, peak, peak);
+	material.specularPower = glossiness;
 
 	const plugin = new BodyMapPlugin(material);
 
@@ -276,6 +418,25 @@ export function bodyMaterial(scene: Scene, name: string, options: BodyMaterialOp
 		plugin.bump = new CubeTexture(options.bump, scene);
 		plugin.bumpStrength = options.bumpStrength ?? 0.2;
 		plugin.bumpEpsilon = options.bumpEpsilon ?? 0.004;
+	}
+
+	if (options.specularMask) {
+		plugin.specularMask = new CubeTexture(options.specularMask, scene);
+	}
+
+	if (options.clouds && options.cloudsAlpha) {
+		plugin.cloudMap = new CubeTexture(options.clouds, scene);
+		plugin.cloudAlpha = new CubeTexture(options.cloudsAlpha, scene);
+		plugin.cloudOpacity = options.cloudOpacity ?? 1;
+		plugin.cloudGain = options.cloudGain ?? 1;
+		plugin.cloudAlphaInvert = options.cloudAlphaIsInverted ? 1 : 0;
+	}
+
+	if (options.night) {
+		plugin.nightMap = new CubeTexture(options.night, scene);
+		plugin.nightLevel = options.nightLevel ?? 1;
+		plugin.nightBand = Math.sin((options.civilTwilightDeg ?? 6) * Math.PI / 180);
+		if (options.starPosition) plugin.starPosition = options.starPosition.clone();
 	}
 
 	if (options.tint) plugin.tint = options.tint;

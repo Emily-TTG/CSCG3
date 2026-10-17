@@ -75,6 +75,15 @@
 				"inclinationDeg": 7.005,
 				"periodDays": 87.969
 			},
+			"reflectance": {
+				"comment-0": "Silicate regolith glass, n ~ 1.6.",
+
+				"bondAlbedo": 0.068,
+				"geometricAlbedo": 0.142,
+				"refractiveIndex": 1.6,
+				"smoothness": 0.02,
+				"glossiness": 4
+			},
 			"textures": {
 				"surface": [
 					{
@@ -110,6 +119,15 @@
 				"inclinationDeg": 3.395,
 				"periodDays": 224.701
 			},
+			"reflectance": {
+				"comment-0": "Sulfuric acid droplets, n = 1.44 at 550 nm (Hansen & Hovenier 1974)",
+
+				"bondAlbedo": 0.77,
+				"geometricAlbedo": 0.689,
+				"refractiveIndex": 1.44,
+				"smoothness": 0.5,
+				"glossiness": 64
+			},
 			"textures": {
 				"surface": [
 					{
@@ -144,6 +162,26 @@
 				"eccentricity": 0.0167,
 				"inclinationDeg": 0.0,
 				"periodDays": 365.256
+			},
+			"reflectance": {
+				"comment-0": "Seawater, n = 1.339 at 550 nm.",
+
+				"bondAlbedo": 0.294,
+				"geometricAlbedo": 0.434,
+				"refractiveIndex": 1.339,
+				"smoothness": 1.0,
+				"glossiness": 220
+			},
+			"cloudLayer": {
+				"geometricAlbedo": 0.64,
+				"trueFractionOfRadius": 0.0019,
+				"driftPeriodHours": 180.0,
+				"opacity": 0.95,
+				"alphaIsInverted": true
+			},
+			"nightLights": {
+				"civilTwilightDeg": 6.0,
+				"level": 1.8
 			},
 			"textures": {
 				"surface": [
@@ -216,6 +254,15 @@
 				"inclinationDeg": 5.145,
 				"periodDays": 27.3217
 			},
+			"reflectance": {
+				"comment-0": "Silicate regolith glass, n ~ 1.6.",
+
+				"bondAlbedo": 0.11,
+				"geometricAlbedo": 0.12,
+				"refractiveIndex": 1.6,
+				"smoothness": 0.02,
+				"glossiness": 4
+			},
 			"textures": {
 				"surface": [
 					{
@@ -279,6 +326,15 @@
 				"inclinationDeg": 1.848,
 				"periodDays": 686.98
 			},
+			"reflectance": {
+				"comment-0": "Basaltic dust, n ~ 1.5, mantling the whole surface",
+
+				"bondAlbedo": 0.25,
+				"geometricAlbedo": 0.17,
+				"refractiveIndex": 1.5,
+				"smoothness": 0.03,
+				"glossiness": 6
+			},
 			"textures": {
 				"surface": [
 					{
@@ -338,8 +394,15 @@
 				"periodDays": 0.31891
 			},
 			"material": {
-				"albedo": 0.071,
 				"baseColor": "#5b5349"
+			},
+			"reflectance": {
+				"comment-0": "Carbonaceous regolith, n ~ 1.7",
+
+				"geometricAlbedo": 0.071,
+				"refractiveIndex": 1.7,
+				"smoothness": 0.01,
+				"glossiness": 4
 			},
 			"textures": {
 				"bump": [
@@ -368,8 +431,15 @@
 				"periodDays": 1.26244
 			},
 			"material": {
-				"albedo": 0.068,
 				"baseColor": "#5d554b"
+			},
+			"reflectance": {
+				"comment-0": "Carbonaceous regolith, n ~ 1.7",
+
+				"geometricAlbedo": 0.068,
+				"refractiveIndex": 1.7,
+				"smoothness": 0.01,
+				"glossiness": 4
 			},
 			"textures": {
 				"bump": [
@@ -396,6 +466,15 @@
 				"eccentricity": 0.0487,
 				"inclinationDeg": 1.304,
 				"periodDays": 4332.589
+			},
+			"reflectance": {
+				"comment-0": "Ammonia ice cloud tops, n ~ 1.42 (Martonchik, Orton & Appleby 1984)",
+
+				"bondAlbedo": 0.343,
+				"geometricAlbedo": 0.538,
+				"refractiveIndex": 1.42,
+				"smoothness": 0.35,
+				"glossiness": 48
 			},
 			"textures": {
 				"surface": [
@@ -448,6 +527,15 @@
 				"innerRadiusKm": 74500,
 				"outerRadiusKm": 136775
 			},
+			"reflectance": {
+				"comment-0": "Ammonia ice cloud tops, n ~ 1.42 (Martonchik, Orton & Appleby 1984)",
+
+				"bondAlbedo": 0.342,
+				"geometricAlbedo": 0.499,
+				"refractiveIndex": 1.42,
+				"smoothness": 0.35,
+				"glossiness": 48
+			},
 			"textures": {
 				"surface": [
 					{
@@ -497,6 +585,15 @@
 				"innerRadiusKm": 37850,
 				"outerRadiusKm": 51150
 			},
+			"reflectance": {
+				"comment-0": "Methane ice and haze, n ~ 1.31 (Martonchik & Orton 1994)",
+
+				"bondAlbedo": 0.3,
+				"geometricAlbedo": 0.488,
+				"refractiveIndex": 1.31,
+				"smoothness": 0.4,
+				"glossiness": 56
+			},
 			"textures": {
 				"surface": [
 					{
@@ -541,6 +638,15 @@
 				"inclinationDeg": 1.77,
 				"periodDays": 60190.03
 			},
+			"reflectance": {
+				"comment-0": "Methane ice and haze, n ~ 1.31 (Martonchik & Orton 1994)",
+
+				"bondAlbedo": 0.29,
+				"geometricAlbedo": 0.442,
+				"refractiveIndex": 1.31,
+				"smoothness": 0.4,
+				"glossiness": 56
+			},
 			"textures": {
 				"surface": [
 					{
@@ -566,6 +672,15 @@
 				"eccentricity": 0.2444,
 				"inclinationDeg": 17.16,
 				"periodDays": 90560.0
+			},
+			"reflectance": {
+				"comment-0": "Nitrogen and methane frost, n ~ 1.30",
+
+				"bondAlbedo": 0.72,
+				"geometricAlbedo": 0.52,
+				"refractiveIndex": 1.3,
+				"smoothness": 0.08,
+				"glossiness": 16
 			},
 			"textures": {
 				"surface": [

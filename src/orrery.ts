@@ -2,6 +2,7 @@ import {
 	Color3,
 	Mesh,
 	Scene,
+	StandardMaterial,
 	Tools,
 	TransformNode,
 	Vector3
@@ -16,7 +17,7 @@ import {
 
 import { GeometryBuffer, mesh } from "./geometry.js";
 import { sphere, annulus } from "./solids.js";
-import { bodyMaterial, coronaMaterial, ringMaterial } from "./globe.js";
+import { bodyMaterial, coronaMaterial, fresnel0, ringMaterial, setCloudPhase } from "./globe.js";
 import { asset, SECOND, TWO_PI } from "./utility.js";
 
 import {
@@ -24,6 +25,7 @@ import {
 	moonOrbitRadius,
 	orbitPeriodSeconds,
 	orbitRadius,
+	periodSeconds,
 	sphereDetail,
 	spinPeriodSeconds,
 	textureBudget
@@ -32,6 +34,12 @@ import {
 const RING_SEGMENTS = 96;
 const CORONA_DETAIL = 12;
 const TIME_SCALE = 0.15;
+
+const ALBEDO_COMPRESSION = 0.5;
+const ALBEDO_REFERENCE = Math.max(...BODIES.map(b => b.reflectance?.geometricAlbedo ?? 0));
+
+const brightnessOf = (geometricAlbedo: number): number =>
+	(geometricAlbedo / ALBEDO_REFERENCE) ** ALBEDO_COMPRESSION;
 
 // Irrationals to avoid weird repeats.
 const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5));
@@ -62,6 +70,11 @@ interface Spinner {
 	phase: number;
 }
 
+interface Drifter {
+	material: StandardMaterial;
+	rate: number;
+}
+
 function faceSize(sourceWidth: number): number {
 	return 2 ** Math.round(Math.log2(Math.max(sourceWidth / 4, 16)));
 }
@@ -70,13 +83,38 @@ function materialFor(scene: Scene, body: Body, sceneRadius: number) {
 	const budget = textureBudget(sceneRadius);
 	const surface = pickVariant(body.textures.surface, budget);
 	const bump = pickVariant(body.textures.bump, budget);
+	const specular = pickVariant(body.textures.specular, budget);
+	const clouds = pickVariant(body.textures.clouds, budget);
+	const night = pickVariant(body.textures.night, budget);
+	const cloudsAlpha = pickVariant(body.textures.cloudsAlpha, budget);
 
 	const star = body.star;
+	const reflectance = body.reflectance;
+	const cloudLayer = body.cloudLayer;
+	const nightLights = body.nightLights;
 
 	return bodyMaterial(scene, body.id, {
 		surface: surface ? asset(surface.cube!) : undefined,
 		bump: bump ? asset(bump.cube!) : undefined,
 		bumpEpsilon: bump ? 2 / faceSize(bump.width) : undefined,
+		specularMask: specular ? asset(specular.cube!) : undefined,
+		clouds: clouds && cloudLayer ? asset(clouds.cube!) : undefined,
+		cloudsAlpha: cloudsAlpha && cloudLayer ? asset(cloudsAlpha.cube!) : undefined,
+		cloudOpacity: cloudLayer?.opacity,
+		cloudAlphaIsInverted: cloudLayer?.alphaIsInverted,
+		night: night && nightLights ? asset(night.cube!) : undefined,
+		nightLevel: nightLights?.level,
+		civilTwilightDeg: nightLights?.civilTwilightDeg,
+		starPosition: Vector3.Zero(),
+		cloudGain: cloudLayer && reflectance
+			? brightnessOf(cloudLayer.geometricAlbedo) / brightnessOf(reflectance.geometricAlbedo)
+			: undefined,
+		brightness: reflectance ? brightnessOf(reflectance.geometricAlbedo) : undefined,
+		// Fresnel off the real material, minus whatever roughness scatters away.
+		specularReflectance: reflectance
+			? fresnel0(reflectance.refractiveIndex) * reflectance.smoothness
+			: undefined,
+		glossiness: reflectance?.glossiness,
 		baseColor: body.material?.baseColor
 			? Color3.FromHexString(body.material.baseColor)
 			: undefined,
@@ -149,6 +187,7 @@ export function system(scene: Scene): SolarSystem {
 	const root = new TransformNode("solar-system", scene, true);
 	const nodes = new Map<string, BodyNodes>();
 	const spinners: Spinner[] = [];
+	const drifters: Drifter[] = [];
 
 	const byId = new Map(BODIES.map(b => [b.id, b]));
 	const children = new Map<string | null, Body[]>();
@@ -204,7 +243,15 @@ export function system(scene: Scene): SolarSystem {
 
 		const buf = new GeometryBuffer();
 		sphere(buf, sceneRadius, sphereDetail(sceneRadius));
-		const built = mesh(scene, body.id, buf, spin, materialFor(scene, body, sceneRadius));
+		const bodyMat = materialFor(scene, body, sceneRadius);
+		const built = mesh(scene, body.id, buf, spin, bodyMat);
+
+		if (body.cloudLayer) {
+			drifters.push({
+				material: bodyMat,
+				rate: TWO_PI / periodSeconds(body.cloudLayer.driftPeriodHours)
+			});
+		}
 
 		addRing(scene, body, sceneRadius, tilt);
 		addCorona(scene, body, sceneRadius, centre);
@@ -223,6 +270,9 @@ export function system(scene: Scene): SolarSystem {
 		elapsed += (scene.getEngine().getDeltaTime() / SECOND) * TIME_SCALE;
 		for (const spinner of spinners) {
 			spinner.node.rotation.y = spinner.phase + spinner.rate * elapsed;
+		}
+		for (const drifter of drifters) {
+			setCloudPhase(drifter.material, drifter.rate * elapsed);
 		}
 	});
 

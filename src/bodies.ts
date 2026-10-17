@@ -29,8 +29,28 @@ export interface Orbit {
 
 export interface BodyMaterial {
 	emissive?: boolean;
-	albedo?: number;
 	baseColor?: string;
+}
+
+export interface Reflectance {
+	bondAlbedo?: number;
+	geometricAlbedo: number;
+	refractiveIndex: number;
+	smoothness: number;
+	glossiness: number;
+}
+
+export interface CloudLayer {
+	geometricAlbedo: number;
+	trueFractionOfRadius: number;
+	driftPeriodHours: number;
+	opacity: number;
+	alphaIsInverted?: boolean;
+}
+
+export interface NightLights {
+	civilTwilightDeg: number;
+	level: number;
 }
 
 export interface LimbDarkening {
@@ -80,6 +100,9 @@ export interface Body {
 	axialTiltDeg: number;
 	orbit?: Orbit;
 	material?: BodyMaterial;
+	reflectance?: Reflectance;
+	cloudLayer?: CloudLayer;
+	nightLights?: NightLights;
 	ring?: Ring;
 	star?: StarProfile;
 	textures: Partial<Record<TextureRole, Variant[]>>;
